@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql-db:
+    image: mysql:8.0
+    container_name: proposal-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root-password
+      MYSQL_DATABASE: proposal_management_system
+      MYSQL_USER: root-username
+      MYSQL_PASSWORD: root-password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sample_data.sql:/docker-entrypoint-initdb.d/sample_data.sql
+    networks:
+      - proposal-network
+    restart: unless-stopped
+
+  # Spring Boot Application
+  proposal-app:
+    build: .
+    container_name: proposal-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/proposal_management_system
+      SPRING_DATASOURCE_USERNAME: root-username
+      SPRING_DATASOURCE_PASSWORD: root-password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    networks:
+      - proposal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/users"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mysql_data:
+
+networks:
+  proposal-network:
+    driver: bridge

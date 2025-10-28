@@ -1,0 +1,779 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { 
+    Save,
+    X,
+    ArrowLeft,
+    Upload,
+    Plus,
+    Minus,
+    Calendar,
+    DollarSign,
+    Clock,
+    Users,
+    Building,
+    AlertTriangle,
+    CheckCircle,
+    Loader
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { departmentAPI, proposalAPI } from '../services/api';
+import { COLORS } from '../config/theme';
+import AnimatedBackground from './shared/AnimatedBackground';
+import { 
+    ThemedCard, 
+    ThemedButton, 
+    ThemedInput,
+    ThemedTextarea,
+    ThemedSelect,
+    ThemedHeading,
+    ThemedSpinner
+} from './shared/ThemedComponents';
+
+const ProposalForm = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+    const [departments, setDepartments] = useState([]);
+    const [activeSection, setActiveSection] = useState('basic');
+
+    const [formData, setFormData] = useState({
+        title: '',
+        abstract_: '',
+        projectType: 'RESEARCH',
+        fundingAgency: '',
+        requestedAmount: '',
+        projectDurationMonths: '',
+        submissionDeadline: '',
+        coInvestigators: '',
+        departmentId: '',
+        priorityLevel: 'MEDIUM',
+        documents: [],
+        budgetItems: [{ description: '', amount: '', category: 'EQUIPMENT', justification: '', yearNumber: 1 }]
+    });
+
+    useEffect(() => {
+        const fetchDepartments = async () => {
+            try {
+                const data = await departmentAPI.getAllDepartments();
+                setDepartments(data);
+            } catch (err) {
+                console.error('Error fetching departments:', err);
+                setError('Failed to load departments');
+            }
+        };
+
+        if (id) {
+            fetchProposal();
+        }
+        fetchDepartments();
+    }, [id]);
+
+    const fetchProposal = async () => {
+        try {
+            setIsLoading(true);
+            const data = await proposalAPI.getProposalById(id);
+            setFormData({
+                ...data,
+                submissionDeadline: data.submissionDeadline?.split('T')[0]
+            });
+        } catch (err) {
+            setError('Failed to load proposal');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleInputChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleBudgetItemChange = (index, field, value) => {
+        const newBudgetItems = [...formData.budgetItems];
+        newBudgetItems[index] = {
+            ...newBudgetItems[index],
+            [field]: value
+        };
+        handleInputChange('budgetItems', newBudgetItems);
+    };
+
+    const addBudgetItem = () => {
+        handleInputChange('budgetItems', [
+            ...formData.budgetItems,
+            { description: '', amount: '', category: 'EQUIPMENT', justification: '', yearNumber: 1 }
+        ]);
+    };
+
+    const removeBudgetItem = (index) => {
+        const newBudgetItems = formData.budgetItems.filter((_, i) => i !== index);
+        handleInputChange('budgetItems', newBudgetItems);
+    };
+
+    const handleFileUpload = (event) => {
+        const files = Array.from(event.target.files);
+        handleInputChange('documents', [...formData.documents, ...files]);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            // First create/update the proposal without budget items and documents
+            const proposalData = {
+                title: formData.title,
+                abstract_: formData.abstract_,
+                projectType: formData.projectType,
+                fundingAgency: formData.fundingAgency,
+                requestedAmount: formData.requestedAmount,
+                projectDurationMonths: formData.projectDurationMonths,
+                submissionDeadline: formData.submissionDeadline,
+                coInvestigators: formData.coInvestigators,
+                departmentId: formData.departmentId,
+                priorityLevel: formData.priorityLevel,
+                status: 'DRAFT'
+            };
+
+            let proposalId = id;
+            if (id) {
+                await proposalAPI.updateProposal(id, proposalData);
+            } else {
+                const newProposal = await proposalAPI.createProposal(proposalData);
+                proposalId = newProposal.id;
+            }
+
+            // Then add budget items
+            if (formData.budgetItems && formData.budgetItems.length > 0) {
+                for (const item of formData.budgetItems) {
+                    if (!item.amount) continue; // Skip items without amount
+                    const budgetItemData = {
+                        description: item.description,
+                        amount: parseFloat(item.amount),
+                        justification: item.justification,
+                        category: item.category || 'EQUIPMENT',
+                        yearNumber: parseInt(item.yearNumber) || 1
+                    };
+                    
+                    try {
+                        // Send budget item creation request
+                        await proposalAPI.createBudgetItem(proposalId, budgetItemData);
+                    } catch (budgetError) {
+                        console.error('Error creating budget item:', budgetError);
+                        setError('Failed to create budget item: ' + budgetError.message);
+                        return; // Stop if budget item creation fails
+                    }
+                }
+            }
+
+            // Finally handle document uploads
+            if (formData.documents && formData.documents.length > 0) {
+                for (const doc of formData.documents) {
+                    const formDataDoc = new FormData();
+                    formDataDoc.append('file', doc);
+                    formDataDoc.append('documentType', 'PROPOSAL_DOCUMENT');
+                    formDataDoc.append('description', 'Supporting document');
+                    
+                    // Send document upload request
+                    await proposalAPI.uploadDocument(proposalId, formDataDoc);
+                }
+            }
+
+            setSuccess('Proposal saved successfully!');
+            // Navigate immediately and use replace to prevent going back to form
+            navigate('/proposals', { replace: true });
+        } catch (err) {
+            console.error('Error:', err);
+            setError(err.message || 'Failed to save proposal. Please check all required fields.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const formSections = [
+        { id: 'basic', label: 'Basic Information' },
+        { id: 'budget', label: 'Budget Details' },
+        { id: 'documents', label: 'Documents' }
+    ];
+
+    if (isLoading) {
+        return (
+            <AnimatedBackground className="min-h-screen flex items-center justify-center">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-center"
+                >
+                    <ThemedSpinner size="large" />
+                    <p className="text-xl font-semibold mt-4" style={{ color: COLORS.WHITE }}>
+                        Loading proposal...
+                    </p>
+                </motion.div>
+            </AnimatedBackground>
+        );
+    }
+
+    return (
+        <AnimatedBackground className="min-h-screen">
+            {/* Content */}
+            <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
+                {/* Header */}
+                <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 sm:mb-8"
+                >
+                    <button 
+                        onClick={() => navigate('/proposals')}
+                        className="group flex items-center space-x-2 mb-4 sm:mb-6 transition-all duration-300 hover:translate-x-1"
+                        style={{ color: COLORS.LIGHT_GRAY }}
+                    >
+                        <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-translate-x-1" />
+                        <span className="text-sm sm:text-base font-medium">Back to Proposals</span>
+                    </button>
+
+                    <ThemedHeading level={1} className="mb-2">
+                        {id ? 'Edit Proposal' : 'Create New Proposal'}
+                    </ThemedHeading>
+                    <p className="text-sm sm:text-base" style={{ color: COLORS.LIGHT_GRAY }}>
+                        {id ? 'Update your proposal details below' : 'Fill out the form below to submit a new proposal'}
+                    </p>
+                </motion.div>
+
+                {/* Success/Error Messages */}
+                <AnimatePresence>
+                    {success && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                            className="mb-4 sm:mb-6 p-4 rounded-2xl flex items-center space-x-3 shadow-lg border-2"
+                            style={{ 
+                                backgroundColor: '#10B98115',
+                                borderColor: '#10B981'
+                            }}
+                        >
+                            <div 
+                                className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: '#10B981' }}
+                            >
+                                <CheckCircle className="w-5 h-5 text-white" />
+                            </div>
+                            <span className="font-medium text-sm sm:text-base" style={{ color: '#10B981' }}>
+                                {success}
+                            </span>
+                        </motion.div>
+                    )}
+
+                    {error && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                            className="mb-4 sm:mb-6 p-4 rounded-2xl flex items-center space-x-3 shadow-lg border-2"
+                            style={{ 
+                                backgroundColor: `${COLORS.RED}15`,
+                                borderColor: COLORS.RED
+                            }}
+                        >
+                            <div 
+                                className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                                style={{ backgroundColor: COLORS.RED }}
+                            >
+                                <AlertTriangle className="w-5 h-5 text-white" />
+                            </div>
+                            <span className="font-medium text-sm sm:text-base" style={{ color: COLORS.RED }}>
+                                {error}
+                            </span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Form Sections Navigation */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="flex flex-wrap gap-2 sm:gap-4 mb-6 sm:mb-8"
+                >
+                    {formSections.map((section, index) => (
+                        <motion.button
+                            key={section.id}
+                            type="button"
+                            onClick={() => setActiveSection(section.id)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`relative px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-300 shadow-md ${
+                                activeSection === section.id
+                                    ? 'text-white shadow-lg'
+                                    : 'text-gray-700 hover:shadow-xl'
+                            }`}
+                            style={activeSection === section.id ? {
+                                background: `linear-gradient(135deg, ${COLORS.PINK}, ${COLORS.ORANGE})`
+                            } : {
+                                backgroundColor: `${COLORS.WHITE}15`,
+                                color: COLORS.LIGHT_GRAY
+                            }}
+                        >
+                            {section.label}
+                            {activeSection === section.id && (
+                                <motion.div
+                                    layoutId="activeTab"
+                                    className="absolute inset-0 rounded-xl sm:rounded-2xl"
+                                    style={{ background: `linear-gradient(135deg, ${COLORS.PINK}, ${COLORS.ORANGE})`, zIndex: -1 }}
+                                />
+                            )}
+                        </motion.button>
+                    ))}
+                </motion.div>
+
+                {/* Form */}
+                <motion.form 
+                    onSubmit={handleSubmit} 
+                    className="space-y-6 sm:space-y-8"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                >
+                    <AnimatePresence mode="wait">
+                        {activeSection === 'basic' && (
+                            <motion.div
+                                key="basic"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ThemedCard className="space-y-6 sm:space-y-8">
+                                    {/* Title */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.1 }}
+                                    >
+                                        <ThemedInput
+                                            label="Title *"
+                                            type="text"
+                                            value={formData.title}
+                                            onChange={(e) => handleInputChange('title', e.target.value)}
+                                            required
+                                            placeholder="Enter proposal title"
+                                        />
+                                    </motion.div>
+
+                                    {/* Abstract */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.15 }}
+                                    >
+                                        <ThemedTextarea
+                                            label="Abstract *"
+                                            value={formData.abstract_}
+                                            onChange={(e) => handleInputChange('abstract_', e.target.value)}
+                                            required
+                                            rows={4}
+                                            placeholder="Provide a brief abstract of your proposal"
+                                        />
+                                    </motion.div>
+
+                                    {/* Project Type */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.2 }}
+                                    >
+                                        <ThemedSelect
+                                            label="Project Type *"
+                                            value={formData.projectType}
+                                            onChange={(e) => handleInputChange('projectType', e.target.value)}
+                                            required
+                                        >
+                                            <option value="RESEARCH">Research</option>
+                                            <option value="DEVELOPMENT">Development</option>
+                                            <option value="EDUCATION">Education</option>
+                                            <option value="SERVICE">Service</option>
+                                        </ThemedSelect>
+                                    </motion.div>
+
+                                    {/* Department */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.25 }}
+                                    >
+                                        <ThemedSelect
+                                            label="Department *"
+                                            value={formData.departmentId}
+                                            onChange={(e) => handleInputChange('departmentId', e.target.value)}
+                                            required
+                                        >
+                                            <option value="">Select Department</option>
+                                            {departments.map(dept => (
+                                                <option key={dept.id} value={dept.id}>
+                                                    {dept.name}
+                                                </option>
+                                            ))}
+                                        </ThemedSelect>
+                                    </motion.div>
+
+                                    {/* Co-Investigators */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.3 }}
+                                    >
+                                        <ThemedTextarea
+                                            label="Co-Investigators"
+                                            value={formData.coInvestigators}
+                                            onChange={(e) => handleInputChange('coInvestigators', e.target.value)}
+                                            rows={2}
+                                            placeholder="List co-investigators (comma separated)"
+                                        />
+                                    </motion.div>
+
+                                    {/* Priority Level */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.35 }}
+                                    >
+                                        <ThemedSelect
+                                            label="Priority Level *"
+                                            value={formData.priorityLevel}
+                                            onChange={(e) => handleInputChange('priorityLevel', e.target.value)}
+                                            required
+                                        >
+                                            <option value="LOW">Low</option>
+                                            <option value="MEDIUM">Medium</option>
+                                            <option value="HIGH">High</option>
+                                            <option value="CRITICAL">Critical</option>
+                                        </ThemedSelect>
+                                    </motion.div>
+                                </ThemedCard>
+                            </motion.div>
+                        )}
+
+                        {activeSection === 'budget' && (
+                            <motion.div
+                                key="budget"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ThemedCard className="space-y-6 sm:space-y-8">
+                                    {/* Funding Agency */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.1 }}
+                                    >
+                                        <ThemedInput
+                                            label="Funding Agency"
+                                            type="text"
+                                            value={formData.fundingAgency}
+                                            onChange={(e) => handleInputChange('fundingAgency', e.target.value)}
+                                            placeholder="Enter funding agency name"
+                                        />
+                                    </motion.div>
+
+                                    {/* Requested Amount */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.15 }}
+                                    >
+                                        <ThemedInput
+                                            label="Requested Amount ($) *"
+                                            type="number"
+                                            value={formData.requestedAmount}
+                                            onChange={(e) => handleInputChange('requestedAmount', e.target.value)}
+                                            required
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Enter requested amount"
+                                        />
+                                    </motion.div>
+
+                                    {/* Project Duration */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.2 }}
+                                    >
+                                        <ThemedInput
+                                            label="Project Duration (months) *"
+                                            type="number"
+                                            value={formData.projectDurationMonths}
+                                            onChange={(e) => handleInputChange('projectDurationMonths', e.target.value)}
+                                            required
+                                            min="1"
+                                            placeholder="Enter project duration in months"
+                                        />
+                                    </motion.div>
+
+                                    {/* Submission Deadline */}
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.25 }}
+                                    >
+                                        <ThemedInput
+                                            label="Submission Deadline *"
+                                            type="date"
+                                            value={formData.submissionDeadline}
+                                            onChange={(e) => handleInputChange('submissionDeadline', e.target.value)}
+                                            required
+                                        />
+                                    </motion.div>
+
+                                    {/* Budget Items */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-sm font-semibold" style={{ color: COLORS.PINK }}>
+                                                Budget Items
+                                            </label>
+                                            <ThemedButton
+                                                type="button"
+                                                variant="secondary"
+                                                onClick={addBudgetItem}
+                                                className="flex items-center space-x-2"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                <span>Add Item</span>
+                                            </ThemedButton>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {formData.budgetItems.map((item, index) => (
+                                                <motion.div
+                                                    key={index}
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                >
+                                                    <ThemedCard variant="secondary" className="relative">
+                                                        <div className="flex justify-between items-start mb-4">
+                                                            <h4 className="font-semibold text-lg" style={{ color: COLORS.PINK }}>
+                                                                Item #{index + 1}
+                                                            </h4>
+                                                            <motion.button
+                                                                type="button"
+                                                                onClick={() => removeBudgetItem(index)}
+                                                                whileHover={{ scale: 1.1, rotate: 90 }}
+                                                                whileTap={{ scale: 0.9 }}
+                                                                className="p-2 rounded-lg transition-colors duration-300"
+                                                                style={{ color: COLORS.RED }}
+                                                            >
+                                                                <Minus className="w-5 h-5" />
+                                                            </motion.button>
+                                                        </div>
+
+                                                        <div className="space-y-4">
+                                                            <ThemedInput
+                                                                type="text"
+                                                                value={item.description}
+                                                                onChange={(e) => handleBudgetItemChange(index, 'description', e.target.value)}
+                                                                placeholder="Item description"
+                                                            />
+
+                                                            <ThemedInput
+                                                                type="number"
+                                                                value={item.amount}
+                                                                onChange={(e) => handleBudgetItemChange(index, 'amount', e.target.value)}
+                                                                placeholder="Amount (required)"
+                                                                min="0"
+                                                                step="0.01"
+                                                                required
+                                                            />
+
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                                <ThemedSelect
+                                                                    value={item.category}
+                                                                    onChange={(e) => handleBudgetItemChange(index, 'category', e.target.value)}
+                                                                    required
+                                                                >
+                                                                    <option value="EQUIPMENT">Equipment</option>
+                                                                    <option value="PERSONNEL">Personnel</option>
+                                                                    <option value="SUPPLIES">Supplies</option>
+                                                                    <option value="TRAVEL">Travel</option>
+                                                                    <option value="OTHER">Other</option>
+                                                                </ThemedSelect>
+
+                                                                <ThemedInput
+                                                                    type="number"
+                                                                    value={item.yearNumber}
+                                                                    onChange={(e) => handleBudgetItemChange(index, 'yearNumber', parseInt(e.target.value))}
+                                                                    placeholder="Year Number"
+                                                                    min="1"
+                                                                    required
+                                                                />
+                                                            </div>
+
+                                                            <ThemedTextarea
+                                                                value={item.justification}
+                                                                onChange={(e) => handleBudgetItemChange(index, 'justification', e.target.value)}
+                                                                placeholder="Justification"
+                                                                rows={2}
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </ThemedCard>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                    </div>
+                                </ThemedCard>
+                            </motion.div>
+                        )}
+
+                        {activeSection === 'documents' && (
+                            <motion.div
+                                key="documents"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <ThemedCard className="space-y-6 sm:space-y-8">
+                                    {/* Document Upload */}
+                                    <div className="space-y-4">
+                                        <label className="text-sm font-semibold" style={{ color: COLORS.PINK }}>
+                                            Supporting Documents
+                                        </label>
+                                        
+                                        <motion.div 
+                                            whileHover={{ scale: 1.02 }}
+                                            className="border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-300"
+                                            style={{ borderColor: COLORS.PINK, backgroundColor: `${COLORS.DARK_NAVY}50` }}
+                                        >
+                                            <input
+                                                type="file"
+                                                multiple
+                                                onChange={handleFileUpload}
+                                                className="hidden"
+                                                id="file-upload"
+                                            />
+                                            <label
+                                                htmlFor="file-upload"
+                                                className="cursor-pointer"
+                                            >
+                                                <motion.div
+                                                    whileHover={{ scale: 1.1 }}
+                                                    transition={{ type: "spring", stiffness: 300 }}
+                                                >
+                                                    <Upload className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4" style={{ color: COLORS.PINK }} />
+                                                </motion.div>
+                                                <p className="text-sm sm:text-base font-medium mb-2" style={{ color: COLORS.WHITE }}>
+                                                    Drag and drop your files here, or click to select files
+                                                </p>
+                                                <p className="text-xs sm:text-sm" style={{ color: COLORS.LIGHT_GRAY }}>
+                                                    Supported formats: PDF, DOC, DOCX, XLS, XLSX (Max 10MB each)
+                                                </p>
+                                            </label>
+                                        </motion.div>
+
+                                        {/* File List */}
+                                        <div className="space-y-3">
+                                            {formData.documents.map((doc, index) => (
+                                                <motion.div
+                                                    key={index}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: 20 }}
+                                                >
+                                                    <ThemedCard variant="secondary" className="flex items-center justify-between">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div 
+                                                                className="p-2 rounded-lg"
+                                                                style={{ 
+                                                                    background: `linear-gradient(135deg, ${COLORS.PINK}, ${COLORS.ORANGE})`
+                                                                }}
+                                                            >
+                                                                <FileText className="w-5 h-5 text-white" />
+                                                            </div>
+                                                            <span className="text-sm font-medium" style={{ color: COLORS.WHITE }}>
+                                                                {doc.name}
+                                                            </span>
+                                                        </div>
+                                                        <motion.button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newDocs = [...formData.documents];
+                                                                newDocs.splice(index, 1);
+                                                                handleInputChange('documents', newDocs);
+                                                            }}
+                                                            whileHover={{ scale: 1.1, rotate: 90 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            className="p-2 rounded-lg transition-colors duration-300"
+                                                            style={{ color: COLORS.RED }}
+                                                        >
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </motion.button>
+                                                    </ThemedCard>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </ThemedCard>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Form Actions */}
+                    <motion.div 
+                        className="flex flex-col sm:flex-row justify-end gap-4 pt-6 sm:pt-8 border-t-2"
+                        style={{ borderColor: `${COLORS.PINK}30` }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <ThemedButton
+                            type="button"
+                            variant="ghost"
+                            onClick={() => navigate('/proposals')}
+                            className="flex items-center justify-center space-x-2"
+                        >
+                            <X className="w-5 h-5" />
+                            <span>Cancel</span>
+                        </ThemedButton>
+
+                        <ThemedButton
+                            type="submit"
+                            variant="primary"
+                            disabled={isLoading}
+                            className="flex items-center justify-center space-x-2"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                    >
+                                        <Loader className="w-5 h-5" />
+                                    </motion.div>
+                                    <span>Saving...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-5 h-5" />
+                                    <span>Save Proposal</span>
+                                </>
+                            )}
+                        </ThemedButton>
+                    </motion.div>
+                </motion.form>
+            </div>
+        </AnimatedBackground>
+    );
+};
+
+export default ProposalForm;

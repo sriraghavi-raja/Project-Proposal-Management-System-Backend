@@ -1,0 +1,20 @@
+{
+  "title": "Advanced AI for Healthcare Diagnosis",
+  "description": "Developing machine learning algorithms for early disease detection using medical imaging and patient data analysis.",
+  "abstractText": "This research proposes to develop an advanced AI system that can analyze medical images and patient records to provide early diagnosis of critical diseases. The system will use deep learning techniques to identify patterns in medical data that human doctors might miss.",
+  "keywords": "artificial intelligence, healthcare, medical diagnosis, machine learning, deep learning",
+  "objectives": "1. Develop AI models for medical image analysis\n2. Create predictive algorithms for disease detection\n3. integrate with existing hospital systems\n4. Validate accuracy through clinical trials",
+  "methodology": "We will use convolutional neural networks (CNNs) for image analysis, combined with natural language processing for patient record analysis. The system will be trained on anonymized medical data from partner hospitals.",
+  "expectedOutcomes": "Improved diagnostic accuracy by 25%, reduced diagnosis time by 40%, and enhanced patient outcomes through early detection.",
+  "budgetRequested": 250000.00,
+  "duration": 24,
+  "startDate": "2025-01-01",
+  "endDate": "2026-12-31",
+  "status": "DRAFT",
+  "projectType": "RESEARCH",
+  "principalInvestigatorId": 3,
+  "departmentId": 3,
+  "fundingAgency": "National Science Foundation",
+  "collaboratingInstitutions": "University Medical Center, Regional Hospital Network",
+  "ethicalConsiderations": "All patient data will be anonymized and handled according to HIPAA guidelines. IRB approval will be obtained before any patient data access."
+}

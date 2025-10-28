@@ -1,0 +1,396 @@
+{
+  "info": {
+    "name": "Project Proposal Management System API",
+    "description": "Complete API collection for testing the Project Proposal Management System backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@university.edu\",\n  \"passwordHash\": \"hashedpassword\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"role\": \"PRINCIPAL_INVESTIGATOR\",\n  \"department\": \"Computer Science\",\n  \"organizationId\": \"CS003\",\n  \"phoneNumber\": \"123-456-7890\",\n  \"officeLocation\": \"CS Building 302\",\n  \"expertiseAreas\": \"Software Engineering, Testing\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"123-456-9999\",\n  \"officeLocation\": \"CS Building 303\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Proposals",
+      "item": [
+        {
+          "name": "Get All Proposals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/proposals",
+              "host": ["{{baseUrl}}"],
+              "path": ["proposals"]
+            }
+          }
+        },
+        {
+          "name": "Get Proposal by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/proposals/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["proposals", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Research Proposal\",\n  \"abstract\": \"This is a comprehensive research proposal focusing on innovative solutions.\",\n  \"principalInvestigatorId\": 2,\n  \"coInvestigators\": \"Dr. John Smith, Prof. Jane Doe\",\n  \"projectType\": \"RESEARCH\",\n  \"fundingAgency\": \"National Science Foundation\",\n  \"requestedAmount\": 100000.00,\n  \"projectDurationMonths\": 24,\n  \"submissionDeadline\": \"2024-06-30T23:59:59\",\n  \"status\": \"DRAFT\",\n  \"projectStage\": \"Preparation\",\n  \"priorityLevel\": \"MEDIUM\",\n  \"departmentId\": 1,\n  \"createdBy\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/proposals",
+              "host": ["{{baseUrl}}"],
+              "path": ["proposals"]
+            }
+          }
+        },
+        {
+          "name": "Update Proposal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Research Proposal\",\n  \"status\": \"SUBMITTED\",\n  \"requestedAmount\": 120000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/proposals/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["proposals", "1"]
+            }
+          }
+        },
+        {
+          "name": "Submit Proposal",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/proposals/1/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["proposals", "1", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Get Proposals by User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/proposals/user/2",
+              "host": ["{{baseUrl}}"],
+              "path": ["proposals", "user", "2"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Departments",
+      "item": [
+        {
+          "name": "Get All Departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments"]
+            }
+          }
+        },
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mathematics\",\n  \"code\": \"MATH\",\n  \"description\": \"Department of Mathematics\",\n  \"location\": \"Math Building, Floor 2\",\n  \"phone\": \"123-456-7895\",\n  \"email\": \"math@university.edu\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Budget Items",
+      "item": [
+        {
+          "name": "Get Budget Items by Proposal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/budget-items/proposal/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["budget-items", "proposal", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Budget Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proposalId\": 1,\n  \"category\": \"EQUIPMENT\",\n  \"description\": \"Laboratory Equipment\",\n  \"amount\": 15000.00,\n  \"justification\": \"Required for experimental setup\",\n  \"yearNumber\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/budget-items",
+              "host": ["{{baseUrl}}"],
+              "path": ["budget-items"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Evaluations",
+      "item": [
+        {
+          "name": "Get Evaluations by Proposal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/evaluations/proposal/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations", "proposal", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Evaluation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proposalId\": 1,\n  \"reviewerId\": 3,\n  \"evaluationStage\": \"Technical Review\",\n  \"overallScore\": 8.5,\n  \"technicalScore\": 9.0,\n  \"innovationScore\": 8.0,\n  \"feasibilityScore\": 8.5,\n  \"budgetScore\": 8.0,\n  \"impactScore\": 9.0,\n  \"comments\": \"Excellent proposal with strong technical merit\",\n  \"recommendation\": \"APPROVE\",\n  \"isFinal\": true,\n  \"conflictOfInterest\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/evaluations",
+              "host": ["{{baseUrl}}"],
+              "path": ["evaluations"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Get All Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"]
+            }
+          }
+        },
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proposalId\": 1,\n  \"projectNumber\": \"PROJ-2024-002\",\n  \"startDate\": \"2024-02-01\",\n  \"endDate\": \"2026-01-31\",\n  \"status\": \"ACTIVE\",\n  \"completionPercentage\": 0.0,\n  \"budgetUtilized\": 0.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/user/2",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "user", "2"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/1/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "1", "read"]
+            }
+          }
+        },
+        {
+          "name": "Create Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 2,\n  \"title\": \"Test Notification\",\n  \"message\": \"This is a test notification message\",\n  \"type\": \"INFO\",\n  \"relatedProposalId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    }
+  ]
+}

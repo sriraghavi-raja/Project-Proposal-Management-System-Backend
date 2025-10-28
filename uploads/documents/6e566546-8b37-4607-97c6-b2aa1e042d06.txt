@@ -1,0 +1,893 @@
+import React, { useState, useEffect } from 'react';
+import { Menu, X, Bell, User, ArrowRight, BarChart3, Users, FileText, Calendar, Layers, Compass, Home, Briefcase, TrendingUp, BookOpen, Send, LogIn, UserPlus, LogOut, LayoutDashboard, CheckCircle, Clock, Settings, ChevronLeft } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { COLORS, GRADIENTS } from '../config/theme';
+import HeroImg from '../assets/Adobe Express - file.png';
+import Logo from '../assets/logo.png';
+
+// --- Global Constants & Mock State ---
+const TAGLINE = "Manage your proposals, master your pipeline.";
+
+// Links for the Liquid Navigation
+const LIQUID_NAV_LINKS = [
+    { name: 'Home', href: '#home', icon: Home, isAuthenticated: false },
+    { name: 'Proposals', href: '#proposals', icon: Briefcase, isAuthenticated: true },
+    { name: 'Analytics', href: '#analytics', icon: TrendingUp, isAuthenticated: true },
+    { name: 'About', href: '#about', icon: BookOpen, isAuthenticated: false },
+    { name: 'Contact', href: '#contact', icon: Send, isAuthenticated: false },
+];
+
+// --- Dashboard Sidebar Links ---
+const DASHBOARD_LINKS = [
+    { name: 'Proposals', href: '/proposals', icon: FileText },
+    { name: 'Evaluations', href: '/evaluations', icon: CheckCircle },
+    { name: 'Milestones', href: '/milestones', icon: Clock },
+    { name: 'Project Manager', href: '/project-manager', icon: Briefcase },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    { name: 'Profile', href: '/profile', icon: User },
+    { name: 'Settings', href: '/settings', icon: Settings },
+];
+
+// --- USE CENTRALIZED COLOR PALETTE ---
+// Import from theme.js instead of local definition
+const PALETTE = COLORS;
+
+// --- CSS Keyframes for Animations ---
+const AnimatedBackground = () => (
+    <>
+        <style>
+            {`
+            @keyframes float-subtle {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-20px); }
+            }
+            @keyframes pulse-glow {
+                0%, 100% { opacity: 0.6; }
+                50% { opacity: 0.3; }
+            }
+            @keyframes blob-rotate {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .animate-float-subtle {
+                animation: float-subtle 8s ease-in-out infinite;
+            }
+            .animate-pulse-glow {
+                animation: pulse-glow 6s ease-in-out infinite;
+            }
+            .blob-shape {
+                position: absolute;
+                border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+                animation: blob-rotate 20s infinite linear;
+            }
+            `}
+        </style>
+        {/* Dark gradient background */}
+        <div 
+            className="absolute inset-0" 
+            style={{ 
+                background: `linear-gradient(135deg, ${PALETTE.DARK_NAVY} 0%, ${PALETTE.DARKER_NAVY} 50%, ${PALETTE.PURPLE_ACCENT} 100%)` 
+            }}
+        ></div>
+
+        {/* Animated gradient blobs */}
+        <div 
+            className="blob-shape absolute top-10 left-10 w-96 h-96 opacity-20"
+            style={{
+                background: `linear-gradient(135deg, ${PALETTE.PINK} 0%, ${PALETTE.ORANGE} 100%)`,
+            }}
+        ></div>
+        <div 
+            className="blob-shape absolute bottom-20 right-20 w-80 h-80 opacity-15"
+            style={{
+                background: `linear-gradient(135deg, ${PALETTE.ORANGE} 0%, ${PALETTE.RED} 100%)`,
+                animationDirection: 'reverse',
+            }}
+        ></div>
+    </>
+);
+
+// --- DASHBOARD SIDEBAR COMPONENT ---
+const DashboardSidebar = ({ isOpen, setIsOpen, activePath }) => {
+    // Close sidebar when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isOpen && !event.target.closest('.sidebar-content') && !event.target.closest('.sidebar-toggle-btn')) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen, setIsOpen]);
+
+    // Close sidebar on escape key
+    useEffect(() => {
+        const handleEscape = (event) => {
+            if (event.key === 'Escape' && isOpen) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen, setIsOpen]);
+
+    const SidebarItem = ({ name, href, icon: Icon, isActive, onClick }) => {
+        return (
+            <Link 
+                to={href}
+                onClick={onClick}
+                className={`flex items-center space-x-4 p-4 rounded-2xl transition-all duration-200 font-bold text-lg group
+                    ${isActive 
+                        ? `bg-gradient-to-r from-${PALETTE.BLUE} to-${PALETTE.LIGHT_BLUE} text-white shadow-lg` 
+                        : `hover:bg-white/20 text-${PALETTE.DARK_NAVY}`
+                    }`}
+            >
+                <Icon className="w-7 h-7" style={{ color: isActive ? PALETTE.CREAM : PALETTE.DARK_NAVY }} />
+                <span className="text-xl">{name}</span>
+            </Link>
+        );
+    };
+
+    return (
+        <>
+            {/* Floating Arrow Toggle Button */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`sidebar-toggle-btn fixed top-1/2 z-[10000] transform -translate-y-1/2 transition-all duration-500 ease-in-out group ${
+                    isOpen ? 'right-[320px]' : 'right-0'
+                }`}
+            >
+                <div className="flex items-center justify-center w-12 h-24">
+                    <ChevronLeft 
+                        className={`w-10 h-10 transition-transform duration-500 ease-in-out drop-shadow-lg ${
+                            isOpen ? 'rotate-0' : 'rotate-180'
+                        }`}
+                        style={{ color: PALETTE.BLUE }}
+                    />
+                </div>
+                {/* Hover hint text */}
+                <div 
+                    className={`absolute right-full top-1/2 transform -translate-y-1/2 mr-3 px-4 py-2 rounded-lg font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg ${
+                        isOpen ? 'hidden' : 'block'
+                    }`}
+                    style={{
+                        background: `linear-gradient(135deg, ${PALETTE.BLUE} 0%, ${PALETTE.LIGHT_BLUE} 100%)`,
+                        color: 'white'
+                    }}
+                >
+                    Dashboard Menu
+                </div>
+            </button>
+
+            {/* Overlay */}
+            <div 
+                className={`fixed inset-0 z-[9998] bg-black/50 transition-all duration-500 ease-in-out ${
+                    isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                }`}
+                onClick={() => setIsOpen(false)}
+            />
+
+            {/* Sidebar Panel */}
+            <div
+                className={`fixed top-0 right-0 h-full w-80 max-w-[90vw] z-[9999] transform transition-transform duration-500 ease-in-out sidebar-content ${
+                    isOpen ? 'translate-x-0' : 'translate-x-full'
+                }`}
+            >
+                <div 
+                    className="h-full rounded-l-3xl border-l border-white/20 bg-white/20 backdrop-blur-xl shadow-2xl flex flex-col p-6"
+                    style={{ 
+                        boxShadow: '-8px 0 32px 0 rgba(0, 0, 0, 0.2)',
+                        background: `linear-gradient(135deg, ${PALETTE.LIGHT_CREAM}80 0%, ${PALETTE.LIGHT_BLUE}80 100%)`
+                    }}
+                >
+                    {/* Header */}
+                    <div className="flex justify-end items-center mb-8">
+                        {/* Close button */}
+                        <button 
+                            className="p-3 rounded-2xl hover:bg-white/20 text-gray-700 transition-colors duration-200"
+                            onClick={() => setIsOpen(false)}
+                        >
+                            <X className="w-8 h-8" />
+                        </button>
+                    </div>
+
+                    {/* Navigation Links */}
+                    <nav className="flex-1 space-y-4 overflow-y-auto">
+                        {DASHBOARD_LINKS.map((link) => (
+                            <SidebarItem
+                                key={link.name}
+                                name={link.name}
+                                href={link.href}
+                                icon={link.icon}
+                                isActive={activePath === link.href}
+                                onClick={() => setIsOpen(false)}
+                            />
+                        ))}
+                    </nav>
+                </div>
+            </div>
+        </>
+    );
+};
+
+// --- SIMPLE FLAT NAVBAR COMPONENT (Matching Homepage Background) ---
+const ModernNavbar = ({ isSidebarOpen, setIsSidebarOpen }) => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { isAuthenticated, user, logout } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/');
+        setIsSidebarOpen(false);
+    };
+
+    const navLinks = [
+        { name: 'Home', href: '#home' },
+        { name: 'Features', href: '#features' },
+        { name: 'About', href: '#about' },
+        { name: 'Contact', href: '#contact' },
+    ];
+
+    return (
+        <nav 
+            className="fixed top-0 left-0 right-0 z-[100]" 
+            style={{ 
+                background: `linear-gradient(180deg, ${PALETTE.DARK_NAVY}cc 0%, ${PALETTE.DARK_NAVY}00 100%)`,
+                backdropFilter: 'blur(10px)'
+            }}
+        >
+            <div className="w-full px-4 sm:px-6 md:px-8 lg:px-16 py-4 md:py-5 flex justify-between items-center">
+                
+                {/* Left: Logo and Navigation Links */}
+                <div className="flex items-center space-x-4 sm:space-x-6 md:space-x-8 lg:space-x-12">
+                    {/* Logo */}
+                    <Link to="/" className="flex items-center flex-shrink-0">
+                        <div className="flex items-center space-x-2 md:space-x-3">
+                            {/* Logo Icon */}
+                            <img 
+                                src={Logo} 
+                                alt="ProposalHub Logo" 
+                                className="w-10 h-10 md:w-12 md:h-12 object-contain"
+                            />
+                            {/* Brand Name */}
+                            <span className="font-black text-2xl sm:text-3xl lg:text-4xl tracking-wider" style={{ color: PALETTE.WHITE }}>
+                                ProposalHub
+                            </span>
+                        </div>
+                    </Link>
+
+                    {/* Navigation Links (Desktop) */}
+                    <div className="hidden lg:flex lg:space-x-6 xl:space-x-8 items-center">
+                        {navLinks.map((link) => (
+                            <a
+                                key={link.name}
+                                href={link.href}
+                                className="px-3 xl:px-4 py-2 text-base xl:text-lg font-semibold rounded-md transition-all duration-200"
+                                style={{ color: PALETTE.LIGHT_GRAY }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = PALETTE.PINK;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = PALETTE.LIGHT_GRAY;
+                                }}
+                            >
+                                {link.name}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Right: User Actions */}
+                <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+                    {isAuthenticated ? (
+                        <div className="hidden lg:flex items-center space-x-3 xl:space-x-4">
+                            {/* User Profile */}
+                            <Link 
+                                to="/profile"
+                                className="flex items-center space-x-2 px-3 xl:px-5 py-2 xl:py-2.5 text-base xl:text-lg font-semibold rounded-md transition-all duration-200"
+                                style={{ color: PALETTE.LIGHT_GRAY }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = PALETTE.PINK;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = PALETTE.LIGHT_GRAY;
+                                }}
+                            >
+                                <User className="w-4 h-4 xl:w-5 xl:h-5" />
+                                <span>{user?.firstName || 'Profile'}</span>
+                            </Link>
+
+                            {/* Logout Button */}
+                            <button 
+                                onClick={handleLogout}
+                                className="px-4 xl:px-6 py-2 xl:py-3 text-base xl:text-lg font-semibold rounded-full transition-all duration-200 shadow-lg"
+                                style={{ 
+                                    background: `linear-gradient(135deg, ${PALETTE.PINK} 0%, ${PALETTE.ORANGE} 100%)`,
+                                    color: PALETTE.WHITE
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="hidden lg:flex items-center space-x-3 xl:space-x-4">
+                            {/* Login Button */}
+                            <Link 
+                                to="/login"
+                                className="px-3 xl:px-5 py-2 xl:py-2.5 text-base xl:text-lg font-semibold rounded-md transition-all duration-200"
+                                style={{ color: PALETTE.LIGHT_GRAY }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = PALETTE.PINK;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = PALETTE.LIGHT_GRAY;
+                                }}
+                            >
+                                Login
+                            </Link>
+                            
+                            {/* Get Started Button (Highlighted) */}
+                            <Link 
+                                to="/register"
+                                className="flex items-center space-x-2 px-4 xl:px-6 py-2 xl:py-3 text-base xl:text-lg font-semibold rounded-full transition-all duration-200 shadow-lg"
+                                style={{ 
+                                    background: `linear-gradient(135deg, ${PALETTE.PINK} 0%, ${PALETTE.ORANGE} 100%)`,
+                                    color: PALETTE.WHITE
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                            >
+                                <span>Get Started</span>
+                                <ArrowRight className="w-4 h-4 xl:w-5 xl:h-5" />
+                            </Link>
+                        </div>
+                    )}
+
+                    {/* Mobile Menu Button */}
+                    <button
+                        className="lg:hidden p-2 rounded-md transition-all duration-200"
+                        style={{ color: PALETTE.LIGHT_GRAY }}
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    >
+                        {isMenuOpen ? <X className="w-6 h-6 sm:w-7 sm:h-7" /> : <Menu className="w-6 h-6 sm:w-7 sm:h-7" />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Mobile Menu Panel */}
+            {isMenuOpen && (
+                <div className="lg:hidden px-4 sm:px-6 md:px-8 py-4 flex flex-col space-y-2">
+                    {navLinks.map((link) => (
+                        <a
+                            key={link.name}
+                            href={link.href}
+                            className="px-4 py-3 text-base sm:text-lg font-semibold rounded-md transition-all duration-200"
+                            style={{ color: PALETTE.LIGHT_GRAY }}
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            {link.name}
+                        </a>
+                    ))}
+                        
+                        {isAuthenticated ? (
+                            <>
+                                <Link 
+                                    to="/profile"
+                                    className="px-4 py-3 text-base sm:text-lg font-semibold rounded-md transition-all duration-200"
+                                    style={{ color: PALETTE.LIGHT_GRAY }}
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    Profile
+                                </Link>
+                                <button 
+                                    onClick={() => {
+                                        handleLogout();
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="px-4 py-3 text-left text-base sm:text-lg font-semibold rounded-md transition-all duration-200"
+                                    style={{ color: PALETTE.LIGHT_GRAY }}
+                                >
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link 
+                                    to="/login" 
+                                    className="px-4 py-3 text-base sm:text-lg font-semibold rounded-md transition-all duration-200"
+                                    style={{ color: PALETTE.LIGHT_GRAY }}
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    Login
+                                </Link>
+                                <Link 
+                                    to="/register" 
+                                    className="flex items-center justify-center space-x-2 px-5 sm:px-6 py-3 sm:py-3.5 text-base sm:text-lg font-semibold rounded-full transition-all duration-200 shadow-lg mt-2"
+                                    onClick={() => setIsMenuOpen(false)}
+                                    style={{ 
+                                        background: `linear-gradient(135deg, ${PALETTE.PINK} 0%, ${PALETTE.ORANGE} 100%)`,
+                                        color: PALETTE.WHITE
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
+                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                >
+                                    <span>Get Started</span>
+                                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </Link>
+                            </>
+                        )}
+                </div>
+            )}
+        </nav>
+    );
+};
+
+// --- FEATURE CAROUSEL COMPONENT ---
+const FeatureCarousel = () => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    
+    const carouselItems = [
+        {
+            id: 1,
+            icon: <FileText className="w-12 h-12" />,
+            title: "Proposal Management",
+            description: "Comprehensive submission system with configurable stages, budget management, and team collaboration.",
+            imageQuery: "Project management document icon",
+        },
+        {
+            id: 2,
+            icon: <Users className="w-12 h-12" />,
+            title: "Role-Based Access Control",
+            description: "Specialized RBAC for Admin, PI, Reviewer, and Financial Officer with granular permissions.",
+            imageQuery: "Team collaboration software UI",
+        },
+        {
+            id: 3,
+            icon: <BarChart3 className="w-12 h-12" />,
+            title: "Advanced Analytics & BI",
+            description: "Executive dashboards with predictive modeling and comprehensive performance insights.",
+            imageQuery: "Business intelligence dashboard mockup",
+        },
+        {
+            id: 4,
+            icon: <Calendar className="w-12 h-12" />,
+            title: "Project Lifecycle Tracking",
+            description: "End-to-end management from approval through project completion and deliverables.",
+            imageQuery: "Project timeline software UI",
+        },
+        {
+            id: 5,
+            icon: <Layers className="w-12 h-12" />,
+            title: "High Performance & Security",
+            description: "Scalable architecture handling 1000+ users with enterprise-grade security.",
+            imageQuery: "High security server racks",
+        },
+        {
+            id: 6,
+            icon: <Compass className="w-12 h-12" />,
+            title: "Workflow Management",
+            description: "Configurable approval routing with automated triggers and multi-stage processes.",
+            imageQuery: "Workflow automation diagram",
+        }
+    ];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentIndex((prevIndex) => 
+                (prevIndex + 1) % carouselItems.length
+            );
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [carouselItems.length]);
+
+    const goToSlide = (index) => {
+        setCurrentIndex(index);
+    };
+
+    const getCardStyle = (index) => {
+        const total = carouselItems.length;
+        const diff = index - currentIndex;
+        const normalizedDiff = (diff + total) % total;
+        
+        let zIndex = 1;
+        let scale = 0.85;
+        let opacity = 0;
+        let translateX = 0;
+
+        if (index === currentIndex) {
+            zIndex = 10;
+            scale = 1;
+            opacity = 1;
+            translateX = '0%';
+        } else if (normalizedDiff === 1) { 
+            zIndex = 5;
+            scale = 0.9;
+            opacity = 1;
+            translateX = '50%';
+        } else if (normalizedDiff === total - 1) { 
+            zIndex = 5;
+            scale = 0.9;
+            opacity = 1;
+            translateX = '-50%';
+        } else if (normalizedDiff === 2) { 
+            scale = 0.7;
+            opacity = 0.5;
+            translateX = '90%';
+        } else if (normalizedDiff === total - 2) { 
+            scale = 0.7;
+            opacity = 0.5;
+            translateX = '-90%';
+        }
+
+        return {
+            zIndex: zIndex,
+            transform: `translateX(calc(-50% + ${translateX})) scale(${scale})`,
+            opacity: opacity,
+        };
+    };
+
+    return (
+        <div id="features" className="w-full max-w-7xl mx-auto py-20 px-4 flex flex-col items-center relative">
+            
+            <div className="text-center mb-16 relative z-10">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-black mb-8 drop-shadow-lg tracking-wide" style={{ color: PALETTE.WHITE }}>
+                    CORE PLATFORM FEATURES
+                </h2>
+                <p className="text-xl sm:text-2xl md:text-3xl max-w-3xl mx-auto font-medium" style={{ color: PALETTE.LIGHT_GRAY }}>
+                    See how ProposalHub streamlines your project management lifecycle with powerful tools.
+                </p>
+            </div>
+
+            <div className="relative h-[450px] flex items-center justify-end w-full">
+                
+                {/* Carousel Cards */}
+                {carouselItems.map((item, index) => (
+                    <div 
+                        key={item.id} 
+                        className="absolute w-[85%] md:w-[65%] lg:w-[50%] h-[400px] p-10 rounded-3xl backdrop-blur-xl border border-white/20 shadow-2xl transition-all duration-500 ease-in-out cursor-pointer flex flex-col justify-center items-center text-center"
+                        style={{
+                            ...getCardStyle(index),
+                            background: `linear-gradient(135deg, ${PALETTE.PURPLE_ACCENT}cc 0%, ${PALETTE.DARK_NAVY}cc 100%)`,
+                        }}
+                        onClick={() => goToSlide(index)}
+                    >
+                        <div className="mb-8 p-5 rounded-full" style={{ background: `linear-gradient(135deg, ${PALETTE.PINK} 0%, ${PALETTE.ORANGE} 100%)` }}>
+                            <div style={{ color: PALETTE.WHITE }}>{item.icon}</div>
+                        </div>
+                        <h3 className="text-3xl font-bold mb-6" style={{ color: PALETTE.WHITE }}>{item.title}</h3>
+                        <p className="text-lg leading-relaxed" style={{ color: PALETTE.LIGHT_GRAY }}>{item.description}</p>
+                    </div>
+                ))}
+
+                {/* Navigation Arrows */}
+                <button 
+                    onClick={() => goToSlide((currentIndex - 1 + carouselItems.length) % carouselItems.length)}
+                    className="absolute left-0 lg:left-8 top-1/2 transform -translate-y-1/2 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 backdrop-blur-sm border border-white/30 z-20"
+                    style={{ background: 'rgba(255, 27, 109, 0.2)' }}
+                >
+                    <svg className="w-7 h-7" fill="none" stroke={PALETTE.PINK} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                
+                <button 
+                    onClick={() => goToSlide((currentIndex + 1) % carouselItems.length)}
+                    className="absolute right-0 lg:right-8 top-1/2 transform -translate-y-1/2 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 backdrop-blur-sm border border-white/30 z-20"
+                    style={{ background: 'rgba(255, 27, 109, 0.2)' }}
+                >
+                    <svg className="w-7 h-7" fill="none" stroke={PALETTE.PINK} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+
+            </div>
+
+            {/* Pagination Dots */}
+            <div className="flex justify-center space-x-4 mt-16 relative z-10">
+                {carouselItems.map((_, index) => (
+                    <button
+                        key={index}
+                        onClick={() => goToSlide(index)}
+                        className={`w-5 h-5 rounded-full transition-all duration-300 ${
+                            currentIndex === index 
+                                ? 'w-12' : ''
+                        }`}
+                        style={{
+                            backgroundColor: currentIndex === index ? PALETTE.PINK : 'rgba(255, 27, 109, 0.3)',
+                        }}
+                        aria-label={`Go to feature ${index + 1}`}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// --- UNIFIED HERO + FEATURES SECTION ---
+const HeroAndFeaturesSection = () => {
+    const { user, isAuthenticated } = useAuth();
+    const navigate = useNavigate();
+
+    // Helper function to get dashboard route based on user role
+    const getDashboardRoute = (role) => {
+        switch (role?.toUpperCase()) {
+            case 'ADMIN':
+                return '/admin-dashboard';
+            case 'PROJECT_MANAGER':
+                return '/project-manager-dashboard';
+            case 'PRINCIPAL_INVESTIGATOR':
+                return '/principal-investigator-dashboard';
+            case 'COMMITTEE_CHAIR':
+                return '/committee-chair-dashboard';
+            case 'COMMITTEE_MEMBER':
+            case 'REVIEWER':
+                return '/reviewer-dashboard';
+            case 'DEPARTMENT_HEAD':
+                return '/department-head-dashboard';
+            case 'FINANCE':
+            case 'FINANCIAL_OFFICER':
+                return '/financial-officer-dashboard';
+            case 'STAKEHOLDER':
+                return '/stakeholder-dashboard';
+            default:
+                return '/dashboard';
+        }
+    };
+
+    const handleDashboardClick = () => {
+        if (isAuthenticated && user?.role) {
+            const dashboardRoute = getDashboardRoute(user.role);
+            navigate(dashboardRoute);
+        } else {
+            navigate('/login');
+        }
+    };
+
+    return (
+        <div className="relative overflow-hidden">
+            <AnimatedBackground />
+            
+            {/* HERO SECTION */}
+            <header 
+                id="home"
+                className="min-h-screen flex items-center justify-center relative pt-24 md:pt-32 pb-12 md:pb-20 px-4 sm:px-6"
+            >
+
+            <div className="relative z-10 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+                
+                {/* Left Side - Text Content */}
+                <div className="flex flex-col space-y-6 md:space-y-10 text-center lg:text-left">
+                    
+                    <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-tight" style={{ color: PALETTE.WHITE }}>
+                        ProposalHub
+                    </h1>
+                    
+                    <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold max-w-2xl mx-auto lg:mx-0" style={{ color: PALETTE.LIGHT_GRAY }}>
+                        NEW WAYS FOR FAST<br />PROJECT MANAGEMENT
+                    </p>
+
+                    <p className="text-base sm:text-lg md:text-xl lg:text-2xl max-w-2xl mx-auto lg:mx-0" style={{ color: '#999999' }}>
+                        Streamline your project lifecycle with our comprehensive proposal management platform designed for modern teams.
+                    </p>
+
+                    <div className="flex items-center space-x-3 mt-6 md:mt-8 justify-center lg:justify-start cursor-pointer group" onClick={handleDashboardClick}>
+                        <ArrowRight className="w-6 h-6 sm:w-8 sm:h-8 group-hover:translate-x-2 transition-transform duration-300" style={{ color: PALETTE.PINK }} />
+                        <span className="text-base sm:text-lg md:text-xl font-semibold group-hover:text-pink-400 transition-colors duration-300" style={{ color: PALETTE.LIGHT_GRAY }}>
+                            {isAuthenticated ? 'GO TO DASHBOARD' : 'GET STARTED NOW'}
+                        </span>
+                    </div>
+                    
+                </div>
+
+                {/* Right Side - Gradient Shapes */}
+                <div className="flex justify-center items-center lg:justify-end mt-8 lg:mt-0 relative h-96 lg:h-full">
+                    {/* Large gradient shape */}
+                    <div 
+                        className="absolute w-64 h-96 rounded-full animate-float-subtle"
+                        style={{
+                            background: `linear-gradient(135deg, ${PALETTE.PINK} 0%, ${PALETTE.ORANGE} 100%)`,
+                            filter: 'blur(40px)',
+                            opacity: 0.6,
+                            left: '-50px',
+                        }}
+                    ></div>
+
+                    {/* Secondary gradient shape */}
+                    <div 
+                        className="absolute w-80 h-80 rounded-full animate-float-subtle"
+                        style={{
+                            background: `linear-gradient(135deg, ${PALETTE.ORANGE} 0%, ${PALETTE.RED} 100%)`,
+                            filter: 'blur(60px)',
+                            opacity: 0.4,
+                            right: '-100px',
+                            top: '50px',
+                            animationDelay: '2s',
+                        }}
+                    ></div>
+                </div>
+            </div>
+            </header>
+
+            {/* FEATURE CAROUSEL SECTION */}
+            <FeatureCarousel />
+        </div>
+    );
+};
+
+// --- CONTACT FOOTER - Contrast Background ---
+const ContactFooter = () => {
+    return (
+        <footer id="contact" className="border-t text-white py-16" style={{ backgroundColor: PALETTE.FOOTER_DARK, borderColor: 'rgba(255, 27, 109, 0.2)' }}>
+            <div className="max-w-7xl mx-auto px-8">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-12">
+                    {/* Column 1: Logo and Tagline */}
+                    <div className="col-span-2 md:col-span-1">
+                        <span className="font-black text-3xl" style={{ color: PALETTE.WHITE }}>ProposalHub</span>
+                        <p className="text-gray-400 mb-6 text-lg mt-4">
+                            Streamline Your Project Lifecycle
+                        </p>
+                    </div>
+
+                    {/* Column 2: Product */}
+                    <div className="md:col-span-1">
+                        <h3 className="font-bold mb-6 text-white uppercase tracking-wider text-lg">Product</h3>
+                        <ul className="space-y-4 text-gray-400 text-lg">
+                            <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+                            <li><a href="#" className="hover:text-white transition-colors">API & Integration</a></li>
+                            <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
+                        </ul>
+                    </div>
+
+                    {/* Column 3: Company */}
+                    <div className="md:col-span-1">
+                        <h3 className="font-bold mb-6 text-white uppercase tracking-wider text-lg">Company</h3>
+                        <ul className="space-y-4 text-gray-400 text-lg">
+                            <li><a href="#about" className="hover:text-white transition-colors">About Us</a></li>
+                            <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+                            <li><a href="#" className="hover:text-white transition-colors">Legal</a></li>
+                        </ul>
+                    </div>
+
+                    {/* Column 4: Resources */}
+                    <div className="md:col-span-1">
+                        <h3 className="font-bold mb-6 text-white uppercase tracking-wider text-lg">Resources</h3>
+                        <ul className="space-y-4 text-gray-400 text-lg">
+                            <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
+                            <li><a href="#" className="hover:text-white transition-colors">System Status</a></li>
+                        </ul>
+                    </div>
+                    
+                    {/* Column 5: Contact */}
+                    <div className="md:col-span-1">
+                         <h3 className="font-bold mb-6 text-white uppercase tracking-wider text-lg">Contact</h3>
+                         <ul className="space-y-4 text-gray-400 text-lg">
+                            <li>Email: <a href="mailto:support@proposalhub.com" className="hover:underline" style={{ color: PALETTE.PINK }}>support@proposalhub.com</a></li>
+                            <li>Phone: +1 (555) 123-4567</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-500 text-lg">
+                    <p>&copy; {new Date().getFullYear()} ProposalHub. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    );
+};
+
+// --- Mobile Liquid Navigation ---
+const MobileLiquidNavigation = ({ isAuthenticated, links }) => {
+    const defaultActiveIndex = isAuthenticated ? links.findIndex(l => l.name === 'Proposals') : links.findIndex(l => l.name === 'Home');
+    const [activeIndex, setActiveIndex] = useState(defaultActiveIndex !== -1 ? defaultActiveIndex : 0);
+    const filteredLinks = links.filter(link => !link.isAuthenticated || isAuthenticated);
+
+    if (filteredLinks.length === 0) return null;
+
+    const linkWidthPercentage = 100 / filteredLinks.length;
+    const blobLeft = `${(activeIndex * linkWidthPercentage) + (linkWidthPercentage / 2)}%`;
+    
+    const activeColor = PALETTE.BLUE; 
+    const blobShadowColor = 'rgba(109, 148, 197, 0.7)';
+
+    return (
+        <div className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden">
+            <div 
+                className="max-w-md mx-auto p-4 mb-6 rounded-3xl border border-white/30 bg-white/20 backdrop-blur-xl shadow-2xl transition-all duration-300"
+                style={{
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                    backgroundColor: `${PALETTE.LIGHT_CREAM}CC`
+                }}
+            >
+                <div className="relative flex justify-around items-end h-16">
+                    
+                    {/* The Hyper-Responsive Liquid Blob */}
+                    <div
+                        className="absolute top-0 w-14 h-14 rounded-full transform -translate-y-1/2 transition-all duration-500 ease-in-out"
+                        style={{
+                            left: blobLeft,
+                            transform: `translateX(-50%) translateY(-50%)`,
+                            background: `linear-gradient(135deg, ${PALETTE.BLUE} 0%, ${PALETTE.LIGHT_BLUE} 100%)`,
+                            boxShadow: `0 4px 15px ${blobShadowColor}`
+                        }}
+                    />
+
+                    {/* Navigation Items */}
+                    {filteredLinks.map((link, index) => {
+                        const Icon = link.icon;
+                        const isActive = index === activeIndex;
+
+                        return (
+                            <a
+                                key={link.name}
+                                href={link.href}
+                                onClick={() => setActiveIndex(index)}
+                                className={`flex flex-col items-center justify-center p-3 z-10 w-1/5 transition-all duration-300 relative`}
+                            >
+                                <Icon 
+                                    className={`w-7 h-7 transition-all duration-500 ease-in-out ${
+                                        isActive ? 'text-white translate-y-[-12px] scale-110' : 'text-gray-700 hover:text-gray-900'
+                                    }`} 
+                                />
+                                <span 
+                                    className={`text-sm font-bold transition-all duration-500 ease-in-out absolute bottom-0 ${
+                                        isActive ? 'text-gray-900 opacity-100 translate-y-3' : 'text-gray-500 opacity-0 translate-y-6'
+                                    }`}
+                                >
+                                    {link.name}
+                                </span>
+                            </a>
+                        );
+                    })}
+
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- MAIN HOMEPAGE COMPONENT ---
+const HomePage = () => {
+    const { isAuthenticated } = useAuth();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const location = useLocation();
+    
+    return (
+        <div className="min-h-screen" style={{ backgroundColor: PALETTE.DARK_NAVY }}>
+            {/* Dashboard Sidebar */}
+            {isAuthenticated && (
+                <DashboardSidebar 
+                    isOpen={isSidebarOpen}
+                    setIsOpen={setIsSidebarOpen}
+                    activePath={location.pathname}
+                />
+            )}
+
+            {/* Desktop Navigation */}
+            <ModernNavbar 
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+            />
+            
+            {/* Unified Hero + Features Section */}
+            <HeroAndFeaturesSection />
+            
+            <ContactFooter />
+
+            {/* Mobile Bottom Liquid Navigation */}
+            <MobileLiquidNavigation 
+                isAuthenticated={isAuthenticated} 
+                links={LIQUID_NAV_LINKS} 
+            />
+        </div>
+    );
+};
+
+export default HomePage;
